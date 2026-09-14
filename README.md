@@ -4,8 +4,10 @@ A small, functional demo **and reference project** for `bayern.kickner` Kotlin/J
 exists to show — with real, runnable code — how to pull in and use two in-house libraries:
 
 - **[Klogger](https://github.com/nexus421/Klogger)** `0.1.0` — tiny logging utility with a DSL.
-- **[KotNexLib](https://github.com/nexus421/KotNexLib)** `4.3.0` — crypto + general-purpose Kotlin
+- **[KotNexLib](https://github.com/nexus421/KotNexLib)** `4.4.1` — crypto + general-purpose Kotlin
   extensions.
+
+-> Always check for the latest versions! (For all used libraries!)
 
 Everything documented below was verified against the actual tagged source of both libraries
 (`Klogger@v0.1.0`, `KotNexLib@v4.3.0`), not just their READMEs — see
