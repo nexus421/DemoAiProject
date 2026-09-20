@@ -7,9 +7,9 @@ import bayern.kickner.demo.vault.LoginError
 import bayern.kickner.demo.vault.PasswordPolicy
 import bayern.kickner.demo.vault.RegistrationError
 import bayern.kickner.demo.vault.UserAccount
-import bayern.kickner.demo.vault.cipherLabel
 import bayern.kickner.demo.vault.VaultReport
 import bayern.kickner.demo.vault.VaultService
+import bayern.kickner.demo.vault.cipherLabel
 import bayern.kickner.klogger.KLogger
 import bayern.kickner.klogger.debugLog
 import bayern.kickner.klogger.errorLog
@@ -21,31 +21,48 @@ import kotnexlib.ResultOf2
 import kotnexlib.ResultOfTripple
 import kotnexlib.coverString
 import kotnexlib.measureTime
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+private const val TAG = "Main"
 
 /**
- * main() is a top-level/static context, so it has no `this` and can't use the debugLog/infoLog/...
- * receiver extensions (they need DEFAULT_LOG_TAG from a receiver). [staticLog] is what Klogger
- * provides for exactly this case. Everything below main() runs inside [DemoRunner] instead, where
- * the normal receiver-based helpers work and tag each line with the calling class automatically.
+ * Format of every timestamp this project prints, e.g. `19.09.2026 18:40:12 CEST`. Pinned to [Locale.ENGLISH] so the
+ * zone abbreviation stays the same on every host.
+ */
+internal val timestampFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss z", Locale.ENGLISH)
+
+/** Version and build time for the start banner, e.g. `1.0.0 (built 20.09.2026 13:11:02 CEST)`. */
+internal val appVersion: String =
+    "${BuildConfig.VERSION} (built ${Instant.ofEpochMilli(BuildConfig.BUILD_TIME).atZone(ZoneId.systemDefault()).format(timestampFormat)})"
+
+/**
+ * Entry point. Configures Klogger, then runs the whole scenario for one demo user: hashing, encryption, vault
+ * registrations and logins, and the final report. The arguments are `key=value` pairs: `user=<name>` and
+ * `password=<secret>` override the built-in defaults.
  */
 fun main(args: Array<String>) {
     DemoLogging.configure()
-    staticLog(KLogger.Level.INFO, "Main") { "=== KotNexLib & Klogger reference demo starting ===" }
+    // A top-level function has no receiver and therefore no default log tag, so it logs through staticLog
+    staticLog(KLogger.Level.INFO, TAG) { "=== KotNexLib & Klogger reference demo $appVersion starting ===" }
 
-    val interpreter = ArgsInterpreter(args)
-    val username = interpreter.getValue("user") ?: "ada.lovelace"
-    val password = interpreter.getValue("password") ?: "correct horse battery staple"
+    val arguments = ArgsInterpreter(args)
+    val username = arguments.getValue("user") ?: "ada.lovelace"
+    val password = arguments.getValue("password") ?: "correct horse battery staple"
 
     val (_, totalMs) = measureTime {
         runCatching { DemoRunner.run(username, password) }
-            .onFailure { staticLog(KLogger.Level.CRASH, "Main") { "Demo aborted: ${it.stackTraceToString()}" } }
+            .onFailure { staticLog(KLogger.Level.CRASH, TAG) { "Demo aborted: ${it.stackTraceToString()}" } }
     }
 
-    staticLog(KLogger.Level.INFO, "Main") {
-        "=== Demo finished in ${totalMs}ms - ${DemoLogging.alerts} alert(s), ${DemoLogging.audit.size} audit entries captured ==="
+    staticLog(KLogger.Level.INFO, TAG) {
+        "=== Demo finished in ${totalMs}ms with ${DemoLogging.alerts} alert(s) and ${DemoLogging.audit.size} audit entries ==="
     }
 }
 
+/** Runs the scenario. Inside an object the receiver-based log helpers work and tag every line with `DemoRunner`. */
 private object DemoRunner {
 
     fun run(username: String, password: String) {
@@ -55,7 +72,7 @@ private object DemoRunner {
         EncryptionDemo.run(secret = "Room 237 access code: 4711-ALPHA", password = password)
 
         val policyHash = PasswordPolicy.hashWithFallback(password.toCharArray(), iterations = 1, memoryKb = 512)
-        debugLog { "Policy-checked Argon2 hash sample: ${policyHash.take(24)}…" }
+        debugLog { "Argon2 hash after the policy fallback (first 24 chars): ${policyHash.take(24)}" }
 
         val vault = VaultService()
         runRegistrations(vault, username, password)
@@ -107,7 +124,7 @@ private object DemoRunner {
                 revealAndLog(vault, result.value.account, password)
             }
 
-            is ResultOfTripple.Error -> when (val error = result.value) {
+            is ResultOfTripple.Error -> when (result.value) {
                 LoginError.UnknownUser -> warnLog { "Login failed for '$username': unknown user" }
                 LoginError.WrongPassword -> errorLog("Login failed for '$username': wrong password")
             }
@@ -116,7 +133,10 @@ private object DemoRunner {
 
     private fun revealAndLog(vault: VaultService, account: UserAccount, password: String) {
         val secret = vault.revealSecret(account, password.toCharArray())
-        if (secret == null) return errorLog("Could not decrypt secret note for '${account.username}'", sendAsCrash = true)
+        if (secret == null) {
+            errorLog("Could not decrypt secret note for '${account.username}'", sendAsCrash = true)
+            return
+        }
 
         infoLog { "Secret note for '${account.username}': ${secret.coverString(6, secret.length - 7)}" }
     }

@@ -12,17 +12,16 @@ import kotnexlib.crypto.AES
 import kotnexlib.crypto.BlowfishEncryption
 import kotnexlib.ifFalse
 import kotnexlib.toBase64
-import kotnexlib.toHexString
 
 /**
- * Showcases KotNexLib's [AES] object (CBC / GCM / ECB) and the legacy [BlowfishEncryption].
+ * Shows KotNexLib's [AES] object (CBC, GCM and ECB) and the legacy [BlowfishEncryption].
  *
- * [AES.GCM] is annotated `@ExperimentalKotNexLibAPI` in KotNexLib 4.3.0 even though it's the
- * *recommended* mode per the library's own docs - hence the file-wide `@OptIn` above.
- * [BlowfishEncryption] is annotated `@CriticalAPI` (opt-in required, kept only for legacy interop).
+ * [AES.GCM] is annotated `@ExperimentalKotNexLibAPI` in KotNexLib 4.4.1 although it is the recommended mode, hence
+ * the file-wide `@OptIn` above. [BlowfishEncryption] is annotated `@CriticalAPI` and kept only for legacy interop.
  */
 object EncryptionDemo {
 
+    /** Encrypts and decrypts [secret] with every mode, logging whether each round trip matches. */
     fun run(secret: String, password: String) {
         infoLog { "--- Encryption: AES (CBC / GCM / ECB) + Blowfish ---" }
 
@@ -57,8 +56,7 @@ object EncryptionDemo {
     }
 
     private fun runAesDataRoundTrip(aesData: AES.AESData, password: String) {
-        // AESData.toString()/.restore() bundle salt+iv/nonce+iterations+type into one Base64
-        // string that's safe to persist (e.g. in a database column) and later reconstruct.
+        // AESData.toString() bundles salt, iv/nonce, iterations and mode into one Base64 string that restore() reads back
         val serialized = aesData.toString()
         val restored = AES.AESData.restore(serialized).getOrThrow()
         val decrypted = restored.decryptAsString(password).getOrThrow()
@@ -74,7 +72,7 @@ object EncryptionDemo {
 
     private fun runEcbLegacy(secret: String) {
         val key = "LegacyEcbKey1234"
-        warnLog { "AES/ECB is deterministic and considered weak - demoing it only for legacy-system reference" }
+        warnLog { "AES/ECB is deterministic and considered weak. It is shown only as a reference for legacy systems" }
 
         val encrypted = AES.ECB.encryptWithPassword(secret, key).getOrThrow()
         val decrypted = AES.ECB.decryptWithPassword(encrypted, key).getOrThrow()
@@ -83,7 +81,7 @@ object EncryptionDemo {
     }
 
     private fun runBlowfishLegacy(secret: String, password: String) {
-        warnLog { "Blowfish is a 64-bit-block legacy cipher (@CriticalAPI) - kept only for old-system interop" }
+        warnLog { "Blowfish is a 64-bit-block legacy cipher (@CriticalAPI), kept only for interop with old systems" }
 
         val encrypted = BlowfishEncryption.encrypt(secret, password)
         val decrypted = encrypted?.let { BlowfishEncryption.decrypt(it, password) }

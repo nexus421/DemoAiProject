@@ -10,18 +10,25 @@ import kotnexlib.crypto.Argon2Helper
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * Tiny in-memory user vault. Business outcomes (duplicate username, wrong password, ...) are
- * modeled with [ResultOf2]/[ResultOfTripple] rather than exceptions - they are expected outcomes,
- * not failures, so `runCatching` would be the wrong tool here.
+ * Tiny in-memory user vault. Business outcomes (duplicate username, wrong password, ...) are expected, so they
+ * are modeled with [ResultOf2] and [ResultOfTripple] instead of exceptions. `runCatching` is reserved for things
+ * that actually throw.
  */
 class VaultService {
 
-    // Backed by CopyOnWriteArrayList (not a plain mutableListOf()) specifically so exposing it
-    // directly as List<UserAccount> below is safe without a defensive .toList() copy: readers get
-    // a stable snapshot even if register() mutates the list concurrently.
+    /**
+     * All registered accounts in registration order. The backing [CopyOnWriteArrayList] makes it safe to expose
+     * the list itself instead of a defensive copy: readers iterate over a snapshot even while [register] adds.
+     */
     val allUsers: List<UserAccount>
         field = CopyOnWriteArrayList<UserAccount>()
 
+    /**
+     * Registers [username] with [password] and stores [secretNote] encrypted. With [useLegacyEcb] the note is
+     * encrypted with a fixed AES/ECB key instead of AES/GCM derived from the password.
+     *
+     * @return the new account, or why the registration was rejected.
+     */
     fun register(
         username: String,
         password: CharArray,
@@ -48,6 +55,10 @@ class VaultService {
         return ResultOf2.Success(account)
     }
 
+    /**
+     * Verifies [password] against the stored Argon2id hash. A legacy ECB account logs in with a warning, so the
+     * caller can nudge the user towards re-encryption.
+     */
     fun login(username: String, password: CharArray): ResultOfTripple<UserAccount, LoginWarning, LoginError> {
         val account = allUsers.find { it.username.equals(username, ignoreCase = true) }
             ?: return ResultOfTripple.Error(LoginError.UnknownUser)
@@ -56,11 +67,12 @@ class VaultService {
         if (verified.not()) return ResultOfTripple.Error(LoginError.WrongPassword)
 
         return if (account is UserAccount.EcbLegacyAccount)
-            ResultOfTripple.Warning(LoginWarning(account, "legacy AES-ECB note encryption - re-encrypt with GCM"))
+            ResultOfTripple.Warning(LoginWarning(account, "note is encrypted with legacy AES-ECB, re-encrypt it with GCM"))
         else
             ResultOfTripple.Success(account)
     }
 
+    /** Decrypts the account's note, or returns null if [password] does not fit or the stored data is damaged. */
     fun revealSecret(account: UserAccount, password: CharArray): String? = when (account) {
         is UserAccount.GcmAccount -> AES.AESData.restore(account.encryptedNote).getOrNull()
             ?.decryptAsString(String(password))?.getOrNull()

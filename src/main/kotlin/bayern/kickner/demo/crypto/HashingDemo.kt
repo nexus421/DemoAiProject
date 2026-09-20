@@ -11,12 +11,13 @@ import kotnexlib.crypto.hashIter
 import kotnexlib.measureTime
 
 /**
- * Showcases KotNexLib's two independent hashing paths: plain JVM [java.security.MessageDigest]
- * via [hash], and BouncyCastle via [hashBC]. Neither is suitable for passwords on its own -
- * see [bayern.kickner.demo.vault.PasswordPolicy] for Argon2id, which is.
+ * Shows KotNexLib's two independent hashing paths: the plain JVM [java.security.MessageDigest] via [hash] and
+ * BouncyCastle via [hashBC]. Neither is suitable for passwords. For those see
+ * [bayern.kickner.demo.vault.PasswordPolicy], which uses Argon2id.
  */
 object HashingDemo {
 
+    /** Hashes [password] with both paths and once iteratively, logging the digests. */
     fun run(password: String) {
         infoLog { "--- Hashing: plain JVM (MessageDigest) + BouncyCastle ---" }
 

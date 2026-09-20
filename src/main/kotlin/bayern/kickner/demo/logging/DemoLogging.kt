@@ -6,34 +6,37 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Central Klogger setup for this demo.
- *
- * Klogger dispatches every log call to *all* configured destinations, so the three destinations
- * below (console, audit trail, alert watcher) all run for every single log call, side by side.
- * That's what "multiple destinations/interceptors at once" means in practice.
+ * Central Klogger setup for this demo: the console plus two custom interceptors, an in-memory audit trail and an
+ * alert counter. Klogger dispatches every log call to all configured destinations, so the three run side by side
+ * for the same call.
  */
 object DemoLogging {
 
+    /** One log call as the audit interceptor records it. */
     data class AuditEntry(val level: KLogger.Level, val tag: String, val message: String)
 
     private val alertCount = AtomicInteger(0)
 
+    /**
+     * Every log call since [configure], in order. The backing [CopyOnWriteArrayList] makes it safe to expose the
+     * list itself instead of a copy: readers iterate over a snapshot while logging continues.
+     */
     val audit: List<AuditEntry>
         field = CopyOnWriteArrayList<AuditEntry>()
+
+    /** Number of WARN, ERROR and CRASH calls since [configure]. */
     val alerts: Int get() = alertCount.get()
 
+    /** Registers the three destinations. Call once at startup, before the first log call. */
     fun configure() {
         KLogger.configure {
-            // 1) Built-in destination: plain STDIO (stdout, stderr for ERROR/CRASH).
             logToConsole()
 
-            // 2) Custom interceptor #1: collect every log line into an in-memory audit trail.
             logToCustom { level, tag, message -> audit.add(AuditEntry(level, tag, message)) }
 
-            // 3) Custom interceptor #2: a second, independent interceptor that only reacts to
-            //    WARN/ERROR/CRASH. Proves that any number of interceptors can be combined freely.
+            // A second, independent interceptor: destinations accumulate, nothing replaces the first one
             logToCustom { level, tag, message ->
-                val isAlertWorthy = level == KLogger.Level.WARN || level == KLogger.Level.ERROR || level == KLogger.Level.CRASH
+                val isAlertWorthy = level >= KLogger.Level.WARN
                 isAlertWorthy.ifTrue {
                     alertCount.incrementAndGet()
                     println("  ⚠ ALERT[$level] $tag: $message")
