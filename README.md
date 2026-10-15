@@ -104,8 +104,8 @@ project or starting a new one.
   [Main.kt](src/main/kotlin/bayern/kickner/demo/Main.kt).
 - Secrets (passwords, API keys, SMTP credentials) are never logged. Log the name of the target instead.
 - If a project needs a UI at all: Compose, by default. Compose Multiplatform on JVM/Desktop, Jetpack Compose on
-  Android (see [Android companion libraries](#android-companion-libraries)). Something else only when Compose
-  genuinely does not fit, e.g. an existing Swing codebase.
+  Android (see [ANDROID.md](ANDROID.md) and [Android companion libraries](#android-companion-libraries)). Something
+  else only when Compose genuinely does not fit, e.g. an existing Swing codebase.
 
 ### Documentation and text
 
@@ -462,6 +462,8 @@ Not included here (this project only needs crypto and logging), but the natural 
 | Mail                                            | `jakarta.mail:jakarta.mail-api` with `org.eclipse.angus:angus-mail` as `runtimeOnly`, see KNot's `MailSender`                                 |
 
 ## Android companion libraries
+
+For how Android apps are built (AGP 9, MVI screens, Navigation 3, ObjectBox, secrets), see [ANDROID.md](ANDROID.md).
 
 Not usable from this JVM-only project, but two more `bayern.kickner` libraries worth knowing for Android and
 Jetpack Compose projects. Both come from the same `nexus421MavenReleases` repository. Each library's own README and

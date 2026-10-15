@@ -14,7 +14,9 @@ conventions (toolchain, code style, documentation, structure of a service) in fu
 Entry point: [Main.kt](src/main/kotlin/bayern/kickner/demo/Main.kt). Packages under `bayern.kickner.demo`:
 `logging` (Klogger setup), `crypto` (hashing and encryption demos), `vault` (a small in-memory app tying both
 libraries together with sealed-class domain modeling). [KNot](https://github.com/nexus421/KNot) is the worked
-example of a complete service built with the same conventions.
+example of a complete service built with the same conventions. **For Android apps read [ANDROID.md](ANDROID.md)**:
+toolchain (AGP 9, built-in Kotlin, legacy-kapt), the Contract, ViewModel and View screen pattern, Navigation 3,
+ObjectBox, backup and the rules for keeping secrets out of the APK and the repository.
 
 ## Commands
 
@@ -78,6 +80,6 @@ Deliberate conventions for `bayern.kickner` projects, see README.md's "Conventio
   a colon, a comma or parentheses instead.
 - Code, KDoc, comments and READMEs are English.
 - If a project needs a UI at all, default to Compose (Compose Multiplatform on JVM/Desktop, Jetpack Compose on
-  Android).
+  Android, conventions in ANDROID.md).
 
-Keep README.md and KDoc in sync with the code in the same change.
+Keep README.md, ANDROID.md and KDoc in sync with the code in the same change.
