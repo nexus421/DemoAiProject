@@ -40,6 +40,7 @@ log calls as the console. The start banner shows version and build time from the
 | [vault/VaultService.kt](src/main/kotlin/bayern/kickner/demo/vault/VaultService.kt)       | `ResultOf2` and `ResultOfTripple` for expected business outcomes                 |
 | [vault/PasswordPolicy.kt](src/main/kotlin/bayern/kickner/demo/vault/PasswordPolicy.kt)   | The one deliberate `try`/`catch` (instead of `runCatching`) in this repo, with rationale |
 | [vault/VaultReport.kt](src/main/kotlin/bayern/kickner/demo/vault/VaultReport.kt)         | `handleSizes()` and `forEachDoLast()` collection extensions, stdlib `partition()` |
+| [.editorconfig](.editorconfig)                                                           | Indentation and single-name imports, read by IntelliJ                            |
 
 This project has no tests: it exists to be read. `kotlin.test` on the JUnit Platform is wired up in
 [build.gradle.kts](build.gradle.kts) anyway, so `./gradlew test` works as soon as a test file appears.
@@ -98,7 +99,47 @@ project or starting a new one.
   classes and objects through the receiver helpers (`infoLog { }` and friends).
 - Time and randomness are parameters with defaults (`clock: () -> Long = System::currentTimeMillis`,
   `random: SecureRandom = SecureRandom()`, `now: () -> ZonedDateTime = { ZonedDateTime.now() }`), so callers can
-  inject them.
+  inject them. The central wiring (`Main.kt` or a `create...` function) passes the one shared clock to every service
+  explicitly, also where a default exists. A forgotten one silently runs on real time while tests fake it.
+- One type inside, converted at the boundary. Durations are `kotlin.time.Duration` (`10.seconds`), also in fields
+  and parameters, `toJavaDuration()` only where a Java API takes one. Points in time are Unix milliseconds from the
+  clock, a format (ISO-8601 in a file, `timestampFormat` on screen) is made when writing or showing. Files read by
+  people and tools stay readable, an audit log stores `2026-11-03T10:15:00.123Z`, not a bare number.
+- `kotlinx.serialization` through the reified functions: `json.decodeFromString<Config>(text)` and
+  `json.encodeToString<Config>(config)`, not `Config.serializer()` as argument. A serializer chosen on purpose
+  (polymorphic, hand-written) stays explicit.
+- Inside `suspend` code `runCatching` also catches `CancellationException`, so a cancelled coroutine would run on.
+  Hand the cancellation on and keep the own timeouts working:
+  ```kotlin
+  runCatching { work() }.onFailure { if (it is CancellationException) currentCoroutineContext().ensureActive() }
+  ```
+  Inside a `CoroutineScope` block (`launch`, `withTimeoutOrNull`) a plain `ensureActive()` does the same. A
+  `withTimeoutOrNull` around it still returns `null`, because `ensureActive()` throws its own timeout.
+- `when` with a subject and guards when every branch tests the same value:
+  `when (root) { is JsonArray -> ...; is JsonObject if "version" in root -> ...; else -> ... }`. Mixed conditions
+  without a common subject keep the plain `when`.
+- Regular expressions are file-level `private val`s named after their purpose (`wordSeparators`, `plainVersion`,
+  not `regex`), written as `"...".toRegex()`, with only the escapes the engine needs (`}` is a plain character in
+  Kotlin). A pattern duplicated in another language, e.g. JavaScript, gets a test that proves both match the same,
+  instead of keeping the two strings identical.
+- Typed values instead of strings parsed at runtime where the same API offers both:
+  `setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)` instead of
+  `PosixFilePermissions.fromString("rw-------")`. Not a reason to replace regular expressions, SQL or date patterns.
+- No arguments that only repeat a Kotlin default (`toByteArray()`, not `toByteArray(Charsets.UTF_8)`). Java APIs that
+  fall back to the platform charset always get it explicitly (`String(bytes, Charsets.UTF_8)`,
+  `InputStreamReader(input, Charsets.UTF_8)`).
+- `$` in a string literal that is mostly shell or a template: a multi-dollar string (`$$"echo $HOME"`), where a single
+  `$` is text and only `$$name` interpolates, instead of `\$` or `${'$'}`. Decided per literal.
+- Names say what a value is, also for one that lives three lines (`result`, not `r`). `it` in short lambdas that are
+  not nested and `i` as index stay fine, as the Kotlin coding conventions say.
+- Return types of expression functions may be left out. State them where inference would hide something that
+  matters: a platform type of unclear nullability, or a public type a library promises.
+- Imports name every class, no wildcard imports, no unused ones, no fully qualified names in the code
+  (`FlowContent`, not `kotlinx.html.FlowContent`). [.editorconfig](.editorconfig) keeps the IDE from folding imports
+  into `.*`.
+- Deprecated API is replaced by its successor (`readBuffer(max)` instead of Ktor's `readRemaining(max)`). Warnings
+  are not errors, the build does not fail on them, but every warning is looked at and either fixed or accepted on
+  purpose.
 - Every timestamp a project prints uses `dd.MM.yyyy HH:mm:ss z` in the host's zone, with `Locale.ENGLISH` so the
   zone abbreviation never localizes, e.g. `19.09.2026 18:40:12 CEST`. One shared `timestampFormat` per project, see
   [Main.kt](src/main/kotlin/bayern/kickner/demo/Main.kt).
@@ -113,7 +154,12 @@ project or starting a new one.
 - KDoc on every public declaration: what it does, `@param` and `@property` where the name alone does not say it,
   and the reason behind non-obvious decisions. Multi-line explanations belong into the KDoc, not into inline
   comments.
-- Inline comments are one short full sentence, only where the reason is not obvious from the code itself.
+- A short KDoc stays on one line (`/** Encodes as URL-safe Base64 without padding. */`), a longer one gets the
+  opening `/**` on its own line, as the [Kotlin coding conventions](https://kotlinlang.org/docs/coding-conventions.html#documentation-comments)
+  show.
+- Inline comments are one short full sentence, only where the reason is not obvious from the code itself. They start
+  with `// ` and a space. A line whose real purpose is a side effect gets one (`state = Sealed` drops the key from
+  memory), and it says exactly what happens: dropping a reference is not wiping the memory.
 - No em dashes, no en dashes and no semicolons in any text: README, KDoc, comments, strings, tests. Split into two
   sentences, or use a colon, a comma or parentheses. Plain hyphens in identifiers, flags and `key=value` are fine.
 - README and KDoc are updated in the same change as the code. Stale documentation is always wrong.

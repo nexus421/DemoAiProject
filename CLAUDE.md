@@ -71,11 +71,32 @@ Deliberate conventions for `bayern.kickner` projects, see README.md's "Conventio
   KotNexLib where both exist (`partition()` not `splitFilter`, stdlib `toHexString()`).
 - Top-level code logs through `staticLog` with a `private const val TAG` per file, classes and objects through the
   receiver helpers (`infoLog { }` and friends). Never log secrets.
-- Time and randomness are injectable parameters with defaults (`clock`, `now`, `random`).
+- Time and randomness are injectable parameters with defaults (`clock`, `now`, `random`). The central wiring passes
+  the one shared clock to every service explicitly.
+- One type inside, converted at the boundary: `kotlin.time.Duration` everywhere (`toJavaDuration()` only for Java
+  APIs), Unix milliseconds from the clock, ISO-8601 or `timestampFormat` only when writing a file or showing it.
+- `kotlinx.serialization` through `decodeFromString<T>()` and `encodeToString<T>()`, a serializer is only passed
+  when chosen on purpose.
+- `runCatching` in `suspend` code hands cancellation on:
+  `.onFailure { if (it is CancellationException) currentCoroutineContext().ensureActive() }`.
+- `when` with a subject and guards (`is X if cond ->`) when every branch tests the same value.
+- Regex as file-level `private val` named after its purpose, `"...".toRegex()`, only the escapes the engine needs. A
+  pattern duplicated in JavaScript gets a test proving both match the same.
+- Typed values over strings parsed at runtime where the same API offers both (`setOf(PosixFilePermission...)`).
+- No arguments that repeat a Kotlin default (`toByteArray()`), but Java APIs with a platform charset always get it.
+- Multi-dollar strings (`$$"..."`) for literals that hold `$` as text.
+- Descriptive names also for short-lived values (`result`, not `r`). `it` in short, non-nested lambdas and `i` as
+  index are fine.
+- Return types of expression functions may be omitted, stated where inference would hide a platform type or a
+  public library type.
+- Single-name imports only: no wildcard, no unused imports, no fully qualified names in code (`.editorconfig`).
+- Replace deprecated API with its successor. Warnings do not fail the build, but each one is fixed or accepted on
+  purpose.
 - Every printed timestamp uses `dd.MM.yyyy HH:mm:ss z` with `Locale.ENGLISH` through the one shared
   `timestampFormat`, e.g. `19.09.2026 18:40:12 CEST`.
-- KDoc on every public declaration, with `@param` and `@property` where the name alone does not say it. Inline
-  comments are one short sentence and only where the reason is not obvious.
+- KDoc on every public declaration, with `@param` and `@property` where the name alone does not say it. A short
+  KDoc stays on one line (`/** ... */`). Inline comments are one short sentence after `// `, only where the reason is
+  not obvious, and exact about side effects (dropping a reference is not wiping memory).
 - No em dashes, no en dashes and no semicolons in any text: README, KDoc, comments, strings, tests. Two sentences,
   a colon, a comma or parentheses instead.
 - Code, KDoc, comments and READMEs are English.
