@@ -7,7 +7,7 @@
 The reference project for `bayern.kickner` Kotlin/JVM projects. It shows, with small runnable code, how to pull in
 and use the two in-house libraries, and it documents the conventions every new project follows:
 
-- **[Klogger](https://github.com/nexus421/Klogger)** `0.1.0`: tiny logging utility with a DSL.
+- **[Klogger](https://github.com/nexus421/Klogger)** `0.5.0`: tiny logging utility with a DSL.
 - **[KotNexLib](https://github.com/nexus421/KotNexLib)** `4.4.1`: crypto and general-purpose Kotlin extensions.
 
 Always check for the latest versions of every library used. Everything below was checked against the tagged source
