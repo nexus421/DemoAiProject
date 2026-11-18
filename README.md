@@ -568,7 +568,7 @@ collisions.
 
 ## Sources
 
-- Klogger: [github.com/nexus421/Klogger](https://github.com/nexus421/Klogger), tag `v0.1.0`.
+- Klogger: [github.com/nexus421/Klogger](https://github.com/nexus421/Klogger), tag `v0.5.0`.
 - KotNexLib: [github.com/nexus421/KotNexLib](https://github.com/nexus421/KotNexLib), tag `v4.4.1`.
 - KNot: [github.com/nexus421/KNot](https://github.com/nexus421/KNot), the worked example of a service.
 - BarcodeScanner: [github.com/nexus421/BarcodeScanner](https://github.com/nexus421/BarcodeScanner), tag `v3.0.0`.
